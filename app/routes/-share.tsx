@@ -44,6 +44,11 @@ export default function SharePage() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const playerRef = useRef<VideoPlayerHandle | null>(null);
 
+  useEffect(() => {
+    setIsDownloading(false);
+    setDownloadError(null);
+  }, [token]);
+
   const { shareInfo, videoData, comments } = useShareData({ token, grantToken });
   const canTrackPresence = Boolean(playbackSession?.url && videoData?.video?._id);
   const { watchers } = useVideoPresence({

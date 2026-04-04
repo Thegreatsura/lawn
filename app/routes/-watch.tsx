@@ -212,7 +212,12 @@ export default function WatchPage() {
         {/* Video player area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-black">
           {downloadError ? (
-            <div className="border-b border-[#dc2626]/40 bg-[#f8d7d7] px-5 py-3 text-sm text-[#7f1d1d]">
+            <div
+              role="alert"
+              aria-live="assertive"
+              aria-atomic="true"
+              className="border-b border-[#dc2626]/40 bg-[#f8d7d7] px-5 py-3 text-sm text-[#7f1d1d]"
+            >
               {downloadError}
             </div>
           ) : null}
