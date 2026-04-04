@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { triggerDownload } from "@/lib/download";
 import { formatDuration, formatTimestamp, formatRelativeTime } from "@/lib/utils";
 import { useVideoPresence } from "@/lib/useVideoPresence";
 import { VideoWatchers } from "@/components/presence/VideoWatchers";
-import { Lock, Video, AlertCircle, MessageSquare, Clock } from "lucide-react";
+import { Lock, Video, AlertCircle, MessageSquare, Clock, Download } from "lucide-react";
 import { useShareData } from "./-share.data";
 
 export default function SharePage() {
@@ -22,6 +23,7 @@ export default function SharePage() {
   const issueAccessGrant = useMutation(api.shareLinks.issueAccessGrant);
   const createComment = useMutation(api.comments.createForShareGrant);
   const getPlaybackSession = useAction(api.videoActions.getSharedPlaybackSession);
+  const getDownloadUrl = useAction(api.videoActions.getSharedDownloadUrl);
 
   const [grantToken, setGrantToken] = useState<string | null>(null);
   const [hasAttemptedAutoGrant, setHasAttemptedAutoGrant] = useState(false);
@@ -38,6 +40,7 @@ export default function SharePage() {
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const playerRef = useRef<VideoPlayerHandle | null>(null);
 
   const { shareInfo, videoData, comments } = useShareData({ token, grantToken });
@@ -157,6 +160,20 @@ export default function SharePage() {
     }
   };
 
+  const handleDownload = useCallback(async () => {
+    if (!grantToken || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const result = await getDownloadUrl({ grantToken });
+      triggerDownload(result.url, result.filename);
+    } catch (error) {
+      console.error("Failed to prepare shared download:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [getDownloadUrl, grantToken, isDownloading]);
+
   const isBootstrappingShare =
     shareInfo === undefined ||
     (shareInfo?.status === "ok" &&
@@ -268,6 +285,15 @@ export default function SharePage() {
           >
             lawn
           </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleDownload()}
+            disabled={!grantToken || isDownloading}
+          >
+            <Download className="h-4 w-4" />
+            {isDownloading ? "Preparing..." : "Download"}
+          </Button>
         </div>
       </header>
 

@@ -61,6 +61,25 @@ function buildDownloadFilename(title: string | undefined, key: string) {
   return safeTitle.endsWith(`.${ext}`) ? safeTitle : `${safeTitle}.${ext}`;
 }
 
+async function buildDownloadResult(
+  key: string,
+  options: {
+    title?: string;
+    contentType?: string;
+  },
+): Promise<{ url: string; filename: string }> {
+  const filename = buildDownloadFilename(options.title, key);
+
+  return {
+    url: await buildSignedBucketObjectUrl(key, {
+      expiresIn: 600,
+      filename,
+      contentType: options.contentType ?? "video/mp4",
+    }),
+    filename,
+  };
+}
+
 function normalizeBucketKey(key: string): string {
   if (key.startsWith("http://") || key.startsWith("https://")) {
     try {
@@ -511,15 +530,63 @@ export const getDownloadUrl = action({
       throw new Error("Original bucket file not found for this video");
     }
 
-    const filename = buildDownloadFilename(video.title, key);
+    return await buildDownloadResult(key, {
+      title: video.title,
+      contentType: video.contentType,
+    });
+  },
+});
 
-    return {
-      url: await buildSignedBucketObjectUrl(key, {
-        expiresIn: 600,
-        filename,
-        contentType: video.contentType ?? "video/mp4",
-      }),
-      filename,
-    };
+export const getPublicDownloadUrl = action({
+  args: { publicId: v.string() },
+  returns: v.object({
+    url: v.string(),
+    filename: v.string(),
+  }),
+  handler: async (ctx, args): Promise<{ url: string; filename: string }> => {
+    const result = await ctx.runQuery(api.videos.getByPublicId, {
+      publicId: args.publicId,
+    });
+
+    if (!result?.video) {
+      throw new Error("Video not found");
+    }
+
+    const key = getValueString(result.video, "s3Key");
+    if (!key) {
+      throw new Error("Original bucket file not found for this video");
+    }
+
+    return await buildDownloadResult(key, {
+      title: result.video.title,
+      contentType: result.video.contentType,
+    });
+  },
+});
+
+export const getSharedDownloadUrl = action({
+  args: { grantToken: v.string() },
+  returns: v.object({
+    url: v.string(),
+    filename: v.string(),
+  }),
+  handler: async (ctx, args): Promise<{ url: string; filename: string }> => {
+    const result = await ctx.runQuery(api.videos.getByShareGrant, {
+      grantToken: args.grantToken,
+    });
+
+    if (!result?.video) {
+      throw new Error("Video not found");
+    }
+
+    const key = getValueString(result.video, "s3Key");
+    if (!key) {
+      throw new Error("Original bucket file not found for this video");
+    }
+
+    return await buildDownloadResult(key, {
+      title: result.video.title,
+      contentType: result.video.contentType,
+    });
   },
 });

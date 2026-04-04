@@ -2,13 +2,14 @@ import { useAction, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Link, useParams } from "@tanstack/react-router";
 import { useUser } from "@clerk/tanstack-react-start";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video-player/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { triggerDownload } from "@/lib/download";
 import { formatDuration, formatTimestamp, formatRelativeTime } from "@/lib/utils";
-import { AlertCircle, MessageSquare, Clock, X } from "lucide-react";
+import { AlertCircle, MessageSquare, Clock, Download, X } from "lucide-react";
 import { useWatchData } from "./-watch.data";
 
 export default function WatchPage() {
@@ -18,6 +19,7 @@ export default function WatchPage() {
 
   const createComment = useMutation(api.comments.createForPublic);
   const getPlaybackSession = useAction(api.videoActions.getPublicPlaybackSession);
+  const getDownloadUrl = useAction(api.videoActions.getPublicDownloadUrl);
 
   const { videoData, comments } = useWatchData({ publicId });
   const [playbackSession, setPlaybackSession] = useState<{
@@ -30,6 +32,7 @@ export default function WatchPage() {
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
   const playerRef = useRef<VideoPlayerHandle | null>(null);
 
@@ -103,6 +106,20 @@ export default function WatchPage() {
     }
   };
 
+  const handleDownload = useCallback(async () => {
+    if (isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const result = await getDownloadUrl({ publicId });
+      triggerDownload(result.url, result.filename);
+    } catch (error) {
+      console.error("Failed to prepare public download:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [getDownloadUrl, isDownloading, publicId]);
+
   if (videoData === undefined) {
     return (
       <div className="min-h-screen bg-[#f0f0e8] flex items-center justify-center">
@@ -158,6 +175,16 @@ export default function WatchPage() {
               <span className="hidden sm:inline font-mono">{formatDuration(video.duration)}</span>
             </>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={() => void handleDownload()}
+            disabled={isDownloading}
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">{isDownloading ? "Preparing..." : "Download"}</span>
+          </Button>
           <Button
             variant="outline"
             size="sm"
