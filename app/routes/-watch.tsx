@@ -66,6 +66,11 @@ export default function WatchPage() {
     };
   }, [getPlaybackSession, publicId, videoData?.video?.muxPlaybackId]);
 
+  useEffect(() => {
+    setIsDownloading(false);
+    setDownloadError(null);
+  }, [publicId]);
+
   const flattenedComments = useMemo(() => {
     if (!comments) return [] as Array<{ _id: string; timestampSeconds: number; resolved: boolean }>;
 
