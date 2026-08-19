@@ -444,7 +444,7 @@ export default function ProjectPage({
       : "skip",
   );
   const { requestUpload } = useDashboardUploadContext();
-  const deleteVideo = useMutation(api.videos.remove);
+  const deleteVideo = useMutation(api.videos.removeStack);
   const updateVideoWorkflowStatus = useMutation(api.videos.updateWorkflowStatus);
   const getDownloadUrl = useAction(api.videoActions.getDownloadUrl);
   const createFolder = useMutation(api.projects.create);
@@ -527,10 +527,10 @@ export default function ProjectPage({
     [requestUpload, resolvedProjectId],
   );
 
-  const handleDeleteVideo = async (videoId: Id<"videos">, versionNumber: number) => {
+  const handleDeleteVideo = async (videoId: Id<"videos">) => {
     if (
       !confirm(
-        `Delete the latest version (v${versionNumber})? Its comments and share links will be deleted. The previous version will become latest.`,
+        "Delete this video and all its versions? Its comments and share links will be deleted. This can't be undone.",
       )
     )
       return;
@@ -904,7 +904,7 @@ export default function ProjectPage({
                         </div>
                       )}
                       {/* Hover menu */}
-                      <div className="absolute top-2 right-2 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                      <div className="absolute top-2 right-2">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button
@@ -958,11 +958,11 @@ export default function ProjectPage({
                                 className="text-[#dc2626] focus:text-[#dc2626]"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteVideo(video._id, video.versionNumber);
+                                  void handleDeleteVideo(video._id);
                                 }}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete latest version (v{video.versionNumber})
+                                Delete video
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -1130,7 +1130,7 @@ export default function ProjectPage({
                   </div>
 
                   {/* Actions */}
-                  <div className="opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                  <div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <button
@@ -1184,11 +1184,11 @@ export default function ProjectPage({
                             className="text-[#dc2626] focus:text-[#dc2626]"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteVideo(video._id, video.versionNumber);
+                              void handleDeleteVideo(video._id);
                             }}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Delete latest version (v{video.versionNumber})
+                            Delete video
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>

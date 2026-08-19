@@ -873,6 +873,105 @@ test("deletes an unstacked legacy video with no replacement", async () => {
   await expect(t.run((ctx) => ctx.db.get(videoId))).resolves.toBeNull();
 });
 
+test("deletes an entire video stack and its dependents", async () => {
+  vi.useFakeTimers();
+  try {
+    const t = convexTest(schema, modules);
+    const seeded = await t.run(async (ctx) => {
+      const teamId = await ctx.db.insert("teams", {
+        name: "Garden",
+        slug: "garden",
+        ownerClerkId: "owner",
+        plan: "basic",
+      });
+      await ctx.db.insert("teamMembers", {
+        teamId,
+        userClerkId: "owner",
+        userEmail: "owner@example.com",
+        userName: "Owner",
+        role: "owner",
+      });
+      const projectId = await ctx.db.insert("projects", {
+        teamId,
+        name: "Campaign",
+      });
+      const v1 = await ctx.db.insert("videos", {
+        projectId,
+        uploadedByClerkId: "owner",
+        uploaderName: "Owner",
+        title: "Cut",
+        visibility: "public",
+        publicId: "stack-delete-v1",
+        status: "ready",
+        workflowStatus: "review",
+      });
+      return { projectId, v1 };
+    });
+    const { videoId: v2 } = await t.run((ctx) =>
+      createVersionRecord(ctx, {
+        sourceVideoId: seeded.v1,
+        uploadedByClerkId: "owner",
+        uploaderName: "Owner",
+        publicId: "stack-delete-v2",
+      }),
+    );
+    const { videoId: v3 } = await t.run((ctx) =>
+      createVersionRecord(ctx, {
+        sourceVideoId: v2,
+        uploadedByClerkId: "owner",
+        uploaderName: "Owner",
+        publicId: "stack-delete-v3",
+      }),
+    );
+    const dependentIds = await t.run(async (ctx) => {
+      const commentId = await ctx.db.insert("comments", {
+        videoId: seeded.v1,
+        userClerkId: "owner",
+        userName: "Owner",
+        text: "Old notes",
+        timestampSeconds: 1,
+        resolved: false,
+      });
+      const shareLinkId = await ctx.db.insert("shareLinks", {
+        videoId: v2,
+        token: "stack-delete-link",
+        createdByClerkId: "owner",
+        createdByName: "Owner",
+        allowDownload: true,
+        viewCount: 0,
+      });
+      const grantId = await ctx.db.insert("shareAccessGrants", {
+        shareLinkId,
+        token: "stack-delete-grant",
+        expiresAt: Date.now() + 60_000,
+        createdAt: Date.now(),
+      });
+      return { commentId, shareLinkId, grantId };
+    });
+
+    await t.withIdentity({ subject: "owner" }).mutation(api.videos.removeStack, {
+      videoId: v3,
+    });
+
+    const removedVideos = await t.run((ctx) =>
+      Promise.all([seeded.v1, v2, v3].map((videoId) => ctx.db.get(videoId))),
+    );
+    expect(removedVideos).toEqual([null, null, null]);
+
+    await t.finishAllScheduledFunctions(() => vi.runAllTimers());
+    const removedDependents = await t.run((ctx) =>
+      Promise.all([
+        ctx.db.get(dependentIds.commentId),
+        ctx.db.get(dependentIds.shareLinkId),
+        ctx.db.get(dependentIds.grantId),
+      ]),
+    );
+    expect(removedDependents).toEqual([null, null, null]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("storage counts every stored version while project lists only the head", async () => {
   const t = convexTest(schema, modules);
   const seeded = await t.run(async (ctx) => {
@@ -975,6 +1074,11 @@ test("public version paths enforce authentication and member authorization", asy
   ).rejects.toThrow("Requires member role or higher");
   await expect(
     t.withIdentity({ subject: "member" }).mutation(api.videos.remove, {
+      videoId: seeded.videoId,
+    }),
+  ).rejects.toThrow("Requires admin role or higher");
+  await expect(
+    t.withIdentity({ subject: "member" }).mutation(api.videos.removeStack, {
       videoId: seeded.videoId,
     }),
   ).rejects.toThrow("Requires admin role or higher");
