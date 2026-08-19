@@ -904,7 +904,7 @@ export default function ProjectPage({
                         </div>
                       )}
                       {/* Hover menu */}
-                      <div className="absolute top-2 right-2 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                      <div className="absolute top-2 right-2">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button
@@ -1130,7 +1130,7 @@ export default function ProjectPage({
                   </div>
 
                   {/* Actions */}
-                  <div className="opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                  <div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <button
