@@ -1035,6 +1035,24 @@ export const remove = mutation({
   },
 });
 
+export const removeStack = mutation({
+  args: { videoId: v.id("videos") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { video } = await requireVideoAccess(ctx, args.videoId, "admin");
+    const { versions } = await getStackVersions(ctx, video);
+
+    for (const version of versions) {
+      await ctx.db.delete(version._id);
+      await ctx.scheduler.runAfter(0, internal.videos.continueVideoDelete, {
+        videoId: version._id,
+      });
+    }
+
+    return null;
+  },
+});
+
 export const continueVideoDelete = internalMutation({
   args: { videoId: v.id("videos") },
   handler: async (ctx, args) => {

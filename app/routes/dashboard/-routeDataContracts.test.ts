@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { getFunctionName } from "convex/server";
 import { Id } from "@convex/_generated/dataModel";
 import { getDashboardIndexEssentialSpecs } from "./-index.data";
@@ -12,6 +13,12 @@ import { getProjectThumbnailUrl, selectProjectPresenceVideoIds } from "./-projec
 function names(specs: Array<{ query: unknown }>) {
   return specs.map((spec) => getFunctionName(spec.query as never)).sort();
 }
+
+test("project video items expose an individual delete action", () => {
+  const projectRoute = readFileSync(new URL("./-project.tsx", import.meta.url), "utf8");
+
+  assert.equal(projectRoute.match(/>\s*Delete video\s*</g)?.length, 2);
+});
 
 test("dashboard route data contracts expose expected essential queries", () => {
   const teamSlug = "garden";
