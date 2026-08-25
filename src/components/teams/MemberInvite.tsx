@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import {
@@ -42,6 +43,7 @@ export function MemberInvite({ teamId, open, onOpenChange }: MemberInviteProps) 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -56,6 +58,7 @@ export function MemberInvite({ teamId, open, onOpenChange }: MemberInviteProps) 
     if (!email.trim()) return;
 
     setIsLoading(true);
+    setInviteError(null);
     try {
       const token = await inviteMember({
         teamId,
@@ -66,7 +69,12 @@ export function MemberInvite({ teamId, open, onOpenChange }: MemberInviteProps) 
       setInviteLink(`${baseUrl}/invite/${token}`);
       setEmail("");
     } catch (error) {
-      console.error("Failed to invite member:", error);
+      if (error instanceof ConvexError && typeof error.data === "string") {
+        setInviteError(error.data);
+      } else {
+        console.error("Failed to invite member:", error);
+        setInviteError("Failed to invite member. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +118,10 @@ export function MemberInvite({ teamId, open, onOpenChange }: MemberInviteProps) 
               placeholder="Email address"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setInviteError(null);
+              }}
               className="flex-1"
             />
             <DropdownMenu>
@@ -131,6 +142,11 @@ export function MemberInvite({ teamId, open, onOpenChange }: MemberInviteProps) 
             <UserPlus className="mr-2 h-4 w-4" />
             {isLoading ? "Sending..." : "Send invite"}
           </Button>
+          {inviteError && (
+            <p role="alert" className="text-sm text-[#dc2626]">
+              {inviteError}
+            </p>
+          )}
         </form>
 
         {inviteLink && (
