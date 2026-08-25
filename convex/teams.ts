@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import {
   getUser,
@@ -225,7 +225,7 @@ export const inviteMember = mutation({
       .unique();
 
     if (existingMembership) {
-      throw new Error("User is already a member of this team");
+      throw new ConvexError("This person is already a member of this team.");
     }
 
     const existingInvite = await ctx.db
